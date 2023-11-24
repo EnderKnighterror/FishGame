@@ -114,9 +114,6 @@ class LoginWindow:
         self.authenticate_callback = authenticate_callback
         self.register_callback = register_callback
 
-        self.window = tk.Toplevel(parent)
-        self.authenticate_callback = authenticate_callback
-
         self.username_label = tk.Label(self.window, text="Username:")
         self.username_label.pack()
 
