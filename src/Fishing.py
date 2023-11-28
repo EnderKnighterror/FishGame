@@ -1,7 +1,9 @@
 import csv
 import os
 import random
+import hashlib
 from tkinter import ttk
+
 
 ASSETS_FOLDER = "Assets"
 
@@ -235,6 +237,12 @@ class LoginWindow:
     def disable_event(self):
         pass  # Do nothing, effectively disabling the close window button
 
+def hash_password(password, salt=None):
+    if salt is None:
+        salt = os.urandom(32)  # 32 bytes = 256 bits
+    pwdhash = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
+    return salt + pwdhash
+
 def register(username, password):
     # Path to the user credentials file
     current_dir = os.path.dirname(__file__)
@@ -253,21 +261,38 @@ def register(username, password):
             if row['Username'] == username:
                 messagebox.showerror("Registration Error", "Username already exists.")
                 return False
+            
+    hashed_password = hash_password(password)
 
     # Add the new user
     with open(credentials_file, mode='a', newline='') as file:
         writer = csv.DictWriter(file, fieldnames=['Username', 'Password'])
-        writer.writerow({'Username': username, 'Password': password})
+        writer.writerow({'Username': username, 'Password': hashed_password.hex()})
 
     # Update the user_credentials dictionary
-    user_credentials[username] = password
+    user_credentials[username] = hashed_password.hex()
 
     messagebox.showinfo("Registration", "User registered successfully.")
     return True
 
 # Function to authenticate user (to be used in callback)
 def authenticate(username, password, user_credentials):
-    return user_credentials.get(username) == password
+    user_password_hex = user_credentials.get(username)
+    if user_password_hex:
+        try:
+            # Convert the hexadecimal string back to bytes
+            user_password = bytes.fromhex(user_password_hex)
+        except ValueError:
+            # Handle the case where the password is not in hexadecimal format
+            # This is where you would handle legacy password formats, if necessary
+            return False
+
+        # Extract the salt from the stored password
+        salt = user_password[:32]
+        # Hash the entered password with the extracted salt
+        hashed_password = hash_password(password, salt)
+        return hashed_password.hex() == user_password_hex
+    return False
     
 
 class MainWindow:
@@ -378,13 +403,34 @@ class MainWindow:
     def save_score(self):
         # Path to the scores file
         scores_file = os.path.join(ASSETS_FOLDER, 'user_scores.csv')
-
-        # Append the score to the file
-        with open(scores_file, mode='a', newline='') as file:
+    
+        # Read existing scores
+        existing_scores = {}
+        if os.path.exists(scores_file):
+            with open(scores_file, mode='r', newline='') as file:
+                reader = csv.reader(file)
+                for row in reader:
+                    if len(row) == 2:  # Ensure the row has username and score
+                        existing_scores[row[0]] = int(row[1])
+    
+        # Check if the user's new score is higher than their existing score
+        if self.username in existing_scores:
+            if self.total_score > existing_scores[self.username]:
+                existing_scores[self.username] = self.total_score
+                message = f"New high score of {self.total_score} was saved."
+            else:
+                message = "You did not beat your high score."
+        else:
+            existing_scores[self.username] = self.total_score
+            message = f"Score of {self.total_score} was saved."
+    
+        # Write the updated scores back to the file
+        with open(scores_file, mode='w', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow([self.username, self.total_score])
-
-        messagebox.showinfo("Game Over", f"Your score of {self.total_score} was saved.")
+            for username, score in existing_scores.items():
+                writer.writerow([username, score])
+    
+        messagebox.showinfo("Game Over", message)
 
     def start(self):
         self.window.mainloop()
