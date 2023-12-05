@@ -4,8 +4,8 @@ import random
 import hashlib
 from tkinter import ttk
 
-
 ASSETS_FOLDER = "Assets"
+
 
 class ReadingCSV:
     @staticmethod
@@ -21,7 +21,6 @@ class ReadingCSV:
                 key = row['DiceNumber'] if 'DiceNumber' in row else row['FishName']
                 data[key] = row
         return data
-    
 
     @staticmethod
     def check_user_credentials_file(file_name):
@@ -54,7 +53,7 @@ class ReadingCSV:
             for row in csv_reader:
                 users[row['Username']] = row['Password']
         return users
-    
+
     @staticmethod
     def ensure_user_credentials_file(file_name):
         current_dir = os.path.dirname(__file__)
@@ -71,9 +70,10 @@ class ReadingCSV:
 
         return file_path
 
+
 fish_mapping = ReadingCSV.read_csv('fish_mapping.csv')
 fish_info = ReadingCSV.read_csv('fish_info.csv')
-    
+
 # Check the user credentials file before reading any CSV files
 file_check, message = ReadingCSV.check_user_credentials_file('user_credentials.csv')
 if not file_check:
@@ -83,6 +83,7 @@ else:
     # If the file is valid, proceed to read the CSV files
     user_credentials = ReadingCSV.read_user_credentials('user_credentials.csv')
     # Continue with the rest of your program
+
 
 class FishingGame:
     @staticmethod
@@ -114,8 +115,6 @@ class FishingGame:
         keep = gui_callback(f"You caught a {catch}! Do you want to keep it?")
         score = FishingGame.calculate_score(catch, keep)
         return catch, score
-    
-
 
     def authenticate(users):
         username = input("Enter your username: ")
@@ -155,12 +154,13 @@ class FishingGame:
 import tkinter as tk
 from tkinter import messagebox
 
+
 class LoginWindow:
     def __init__(self, parent, authenticate_callback, register_callback):
         self.window = tk.Toplevel(parent)
         self.authenticate_callback = authenticate_callback
         self.register_callback = register_callback
-        self.authenticated_username = None  
+        self.authenticated_username = None
 
         # Set the size of the window
         window_width = 300
@@ -201,8 +201,6 @@ class LoginWindow:
 
         self.window.protocol("WM_DELETE_WINDOW", self.disable_event)
 
-        
-    
     def register(self):
         # Get the username and password from the entry fields
         username = self.username_entry.get()
@@ -229,19 +227,21 @@ class LoginWindow:
 
     def get_authenticated_username(self):
         return self.authenticated_username
-    
+
     def exit_app(self):
         self.window.destroy()
         root.destroy()  # This will close the entire application
-    
+
     def disable_event(self):
         pass  # Do nothing, effectively disabling the close window button
+
 
 def hash_password(password, salt=None):
     if salt is None:
         salt = os.urandom(32)  # 32 bytes = 256 bits
     pwdhash = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
     return salt + pwdhash
+
 
 def register(username, password):
     # Path to the user credentials file
@@ -261,7 +261,7 @@ def register(username, password):
             if row['Username'] == username:
                 messagebox.showerror("Registration Error", "Username already exists.")
                 return False
-            
+
     hashed_password = hash_password(password)
 
     # Add the new user
@@ -274,6 +274,7 @@ def register(username, password):
 
     messagebox.showinfo("Registration", "User registered successfully.")
     return True
+
 
 # Function to authenticate user (to be used in callback)
 def authenticate(username, password, user_credentials):
@@ -293,11 +294,11 @@ def authenticate(username, password, user_credentials):
         hashed_password = hash_password(password, salt)
         return hashed_password.hex() == user_password_hex
     return False
-    
+
 
 class MainWindow:
     def __init__(self, parent, username):
-        self.username = username # Stores username
+        self.username = username  # Stores username
         self.window = tk.Tk() if parent is None else tk.Toplevel(parent)
 
         # Set the size of the window
@@ -343,10 +344,12 @@ class MainWindow:
         self.exit_button = tk.Button(self.window, text="Exit Game", command=self.exit_game)
         self.exit_button.pack()
 
+        self.window.protocol("WM_DELETE_WINDOW", self.disable_event)
+
     def play_round(self):
         def gui_callback(message):
             return messagebox.askyesno("Keep Catch", message)
-        
+
         catch, score = FishingGame.play_round(gui_callback)
         self.catches.append(catch)
 
@@ -360,7 +363,8 @@ class MainWindow:
             self.total_score += score
             # Ensure the fish name is correctly used as the key
             self.kept_fish[catch] = score
-            self.kept_fish_treeview.insert('', 'end', values=(catch, '❌' if catch not in ["Lost bait", "Seaweed Monster (random clump of seaweed)"] else ''))
+            self.kept_fish_treeview.insert('', 'end', values=(
+            catch, '❌' if catch not in ["Lost bait", "Seaweed Monster (random clump of seaweed)"] else ''))
         else:
             # Update the score but do not add the fish to the kept list
             self.total_score += FishingGame.calculate_score(catch, False)
@@ -389,7 +393,6 @@ class MainWindow:
             else:
                 messagebox.showerror("Error", f"{fish} not found in kept fish.")
 
-
     def update_score_and_catches(self):
         self.score_label.config(text=f"Score: {self.total_score}")
         self.catches_text.delete(1.0, tk.END)
@@ -400,10 +403,14 @@ class MainWindow:
         self.window.destroy()
         root.destroy()  # Close the entire application
 
+    def disable_event(self):
+        pass
+
     def save_score(self):
         # Path to the scores file
-        scores_file = os.path.join(ASSETS_FOLDER, 'user_scores.csv')
-    
+        scores_file = os.path.join('..', 'assets', 'user_scores.csv')
+
+
         # Read existing scores
         existing_scores = {}
         if os.path.exists(scores_file):
@@ -412,7 +419,7 @@ class MainWindow:
                 for row in reader:
                     if len(row) == 2:  # Ensure the row has username and score
                         existing_scores[row[0]] = int(row[1])
-    
+
         # Check if the user's new score is higher than their existing score
         if self.username in existing_scores:
             if self.total_score > existing_scores[self.username]:
@@ -423,17 +430,21 @@ class MainWindow:
         else:
             existing_scores[self.username] = self.total_score
             message = f"Score of {self.total_score} was saved."
-    
+
         # Write the updated scores back to the file
         with open(scores_file, mode='w', newline='') as file:
             writer = csv.writer(file)
             for username, score in existing_scores.items():
                 writer.writerow([username, score])
-    
+
+
         messagebox.showinfo("Game Over", message)
+
+
 
     def start(self):
         self.window.mainloop()
+
 
 if __name__ == "__main__":
     root = tk.Tk()
@@ -453,4 +464,3 @@ if __name__ == "__main__":
     if authenticated_username:  # If login was successful
         main_win = MainWindow(root, authenticated_username)
         main_win.start()
-
